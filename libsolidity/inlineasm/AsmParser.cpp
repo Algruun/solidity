@@ -69,8 +69,6 @@ assembly::Statement Parser::parseStatement()
 		return parseBlock();
 	case Token::Switch:
 	{
-		if (!m_julia)
-			break;
 		assembly::Switch switchcase = createWithLocation<assembly::Switch>();
 		m_scanner->next();
 		switchcase.expression = make_shared<Statement>(parseExpression());
