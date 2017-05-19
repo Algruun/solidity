@@ -54,7 +54,6 @@ struct Switch;
 struct Block;
 
 using Statement = boost::variant<Instruction, Literal, Label, StackAssignment, Identifier, Assignment, FunctionCall, FunctionalInstruction, VariableDeclaration, FunctionDefinition, Switch, Block>;
-using Expression = boost::variant<FunctionCall, Identifier, Literal>;
 
 /// Direct EVM instruction (except PUSHi and JUMPDEST)
 struct Instruction { SourceLocation location; solidity::Instruction instruction; };
@@ -82,7 +81,7 @@ struct FunctionDefinition { SourceLocation location; std::string name; TypedName
 /// Switch case or default case
 struct Case { SourceLocation location; std::shared_ptr<Literal> value; Block body; };
 /// Switch statement
-struct Switch { SourceLocation location; Expression expression; std::vector<Case> cases; };
+struct Switch { SourceLocation location; std::shared_ptr<Statement> expression; std::vector<Case> cases; };
 
 struct LocationExtractor: boost::static_visitor<SourceLocation>
 {
