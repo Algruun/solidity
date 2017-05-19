@@ -296,7 +296,7 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 			success = false;
 
 		auto val = make_tuple(_case.kind, _case.value);
-		if (cases.count(val))
+		if (!cases.insert(val).second)
 		{
 			m_errors.push_back(make_shared<Error>(
 				Error::Type::DeclarationError,
@@ -305,8 +305,6 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 			));
 			success = false;
 		}
-		else
-			cases.insert(val);
 	}
 
 	int const initialStackHeight = m_stackHeight;
