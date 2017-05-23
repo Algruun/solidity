@@ -297,15 +297,18 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 
 	for (auto const& _case: _switch.cases)
 	{
-		auto val = make_tuple(_case.value->kind, _case.value->value);
-		if (!cases.insert(val).second)
+		if (_case.value)
 		{
-			m_errors.push_back(make_shared<Error>(
-				Error::Type::DeclarationError,
-				"Duplicate case defined",
-				_case.location
-			));
-			success = false;
+			auto val = make_tuple(_case.value->kind, _case.value->value);
+			if (!cases.insert(val).second)
+			{
+				m_errors.push_back(make_shared<Error>(
+					Error::Type::DeclarationError,
+					"Duplicate case defined",
+					_case.location
+				));
+				success = false;
+			}
 		}
 
 		if (!(*this)(_case.body))
