@@ -315,6 +315,8 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 			success = false;
 	}
 
+	m_stackHeight--;
+
 	return success;
 }
 
