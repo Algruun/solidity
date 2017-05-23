@@ -299,6 +299,7 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 	{
 		if (_case.value)
 		{
+			/// Note: the parser ensures there is only one default case
 			auto val = make_tuple(_case.value->kind, _case.value->value);
 			if (!cases.insert(val).second)
 			{
