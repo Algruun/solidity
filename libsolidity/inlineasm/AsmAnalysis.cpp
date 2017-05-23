@@ -290,6 +290,11 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 	bool success = true;
 	set<tuple<LiteralKind, string>> cases;
 
+	int const initialStackHeight = m_stackHeight;
+	if (!boost::apply_visitor(*this, *_switch.expression))
+		success = false;
+	expectDeposit(1, initialStackHeight, locationOf(*_switch.expression));
+
 	for (auto const& _case: _switch.cases)
 	{
 		if (!(*this)(_case.body))
@@ -306,11 +311,6 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 			success = false;
 		}
 	}
-
-	int const initialStackHeight = m_stackHeight;
-	if (!boost::apply_visitor(*this, *_switch.expression))
-		success = false;
-	expectDeposit(1, initialStackHeight, locationOf(*_switch.expression));
 
 	return success;
 }
