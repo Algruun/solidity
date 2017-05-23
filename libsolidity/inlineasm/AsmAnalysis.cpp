@@ -299,6 +299,12 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 	{
 		if (_case.value)
 		{
+			int const initialStackHeight = m_stackHeight;
+			if (!(*this)(*_case.value))
+				success = false;
+			expectDeposit(1, initialStackHeight, _case.value->location);
+			m_stackHeight--;
+
 			/// Note: the parser ensures there is only one default case
 			auto val = make_tuple(_case.value->kind, _case.value->value);
 			if (!cases.insert(val).second)
