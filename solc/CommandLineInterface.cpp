@@ -35,6 +35,7 @@
 #include <libsolidity/interface/StandardCompiler.h>
 #include <libsolidity/interface/SourceReferenceFormatter.h>
 #include <libsolidity/interface/GasEstimator.h>
+#include <libsolidity/interface/MultiBackendAssemblyStack.h>
 #include <libsolidity/formal/Why3Translator.h>
 #include <libsolidity/inlineasm/AsmStack.h>
 
@@ -717,22 +718,26 @@ bool CommandLineInterface::processInput()
 	{
 		// switch to assembly mode
 		m_onlyAssemble = true;
+		using Input = MultiBackendAssemblyStack::Input;
+		using Machine = MultiBackendAssemblyStack::Machine;
+		Input input = m_args.count(g_argJulia) ? Input::JULIA : Input::Assembly;
+		Machine targetMachine = Machine::EVM;
 		if (m_args.count(g_argMachine))
 		{
 			string machine = m_args[g_argMachine].as<string>();
 			if (machine == g_strEVM)
-				m_assemblyMachine = AssemblyMachine::EVM;
+				targetMachine = Machine::EVM;
 			else if (machine == g_strEVM15)
-				m_assemblyMachine = AssemblyMachine::EVM15;
+				targetMachine = Machine::EVM15;
 			else if (machine == g_streWASM)
-				m_assemblyMachine = AssemblyMachine::eWasm;
+				targetMachine = Machine::eWasm;
 			else
 			{
 				cerr << "Invalid option for --machine: " << machine << endl;
 				return false;
 			}
 		}
-		return assemble();
+		return assemble(input, targetMachine);
 	}
 	if (m_args.count(g_argLink))
 	{
@@ -1018,22 +1023,21 @@ void CommandLineInterface::writeLinkedFiles()
 			writeFile(src.first, src.second);
 }
 
-bool CommandLineInterface::assemble()
+bool CommandLineInterface::assemble(
+	MultiBackendAssemblyStack::Input _input,
+	MultiBackendAssemblyStack::Machine _targetMachine
+)
 {
 	bool successful = true;
 	map<string, shared_ptr<Scanner>> scanners;
-	map<string, assembly::InlineAssemblyStack> assemblyStacks;
+	map<string, MultiBackendAssemblyStack> assemblyStacks;
 	for (auto const& src: m_sourceCodes)
 	{
+		auto& stack = assemblyStacks[src.first] = MultiBackendAssemblyStack(_input, _targetMachine);
 		try
 		{
-			auto scanner = make_shared<Scanner>(CharStream(src.second), src.first);
-			scanners[src.first] = scanner;
-			if (!assemblyStacks[src.first].parse(scanner))
+			if (!stack.parseAndAnalyze(src.first, src.second))
 				successful = false;
-			else
-				//@TODO we should not just throw away the result here
-				assemblyStacks[src.first].assemble();
 		}
 		catch (Exception const& _exception)
 		{
@@ -1046,16 +1050,17 @@ bool CommandLineInterface::assemble()
 			return false;
 		}
 	}
-	for (auto const& stack: assemblyStacks)
+	for (auto const& sourceAndStack: assemblyStacks)
 	{
-		for (auto const& error: stack.second.errors())
+		auto const& stack = sourceAndStack.second;
+		for (auto const& error: stack.errors())
 			SourceReferenceFormatter::printExceptionInformation(
 				cerr,
 				*error,
 				(error->type() == Error::Type::Warning) ? "Warning" : "Error",
-				[&](string const& _source) -> Scanner const& { return *scanners.at(_source); }
+				[&](string const&) -> Scanner const& { return stack.scanner(); }
 			);
-		if (!Error::containsOnlyWarnings(stack.second.errors()))
+		if (!Error::containsOnlyWarnings(stack.errors()))
 			successful = false;
 	}
 
@@ -1065,9 +1070,9 @@ bool CommandLineInterface::assemble()
 	for (auto const& src: m_sourceCodes)
 	{
 		cout << endl << "======= " << src.first << " =======" << endl;
-		eth::Assembly assembly = assemblyStacks[src.first].assemble();
-		cout << assembly.assemble().toHex() << endl;
-		assembly.stream(cout, "", m_sourceCodes);
+		MultiBackendAssemblyStack& stack = assemblyStacks[src.first];
+		cout << stack.assemble().toHex() << endl;
+		cout << stack.print() << endl;
 	}
 
 	return true;
