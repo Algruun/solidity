@@ -297,9 +297,6 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 
 	for (auto const& _case: _switch.cases)
 	{
-		if (!(*this)(_case.body))
-			success = false;
-
 		auto val = make_tuple(_case.value->kind, _case.value->value);
 		if (!cases.insert(val).second)
 		{
@@ -310,6 +307,9 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 			));
 			success = false;
 		}
+
+		if (!(*this)(_case.body))
+			success = false;
 	}
 
 	return success;
