@@ -292,10 +292,10 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 
 	for (auto const& _case: _switch.cases)
 	{
-		if (!boost:apply_visitor(*this, _case.body))
+		if (!(*this)(_case.body))
 			success = false;
 
-		auto val = make_tuple(_case.kind, _case.value);
+		auto val = make_tuple(_case.value->kind, _case.value->value);
 		if (!cases.insert(val).second)
 		{
 			m_errors.push_back(make_shared<Error>(
@@ -308,9 +308,9 @@ bool AsmAnalyzer::operator()(Switch const& _switch)
 	}
 
 	int const initialStackHeight = m_stackHeight;
-	if (!boost::apply_visitor(*this, _switch.expression))
+	if (!boost::apply_visitor(*this, *_switch.expression))
 		success = false;
-	expectDeposit(1, initialStackHeight, _switch.expression.location);
+	expectDeposit(1, initialStackHeight, locationOf(*_switch.expression));
 
 	return success;
 }
