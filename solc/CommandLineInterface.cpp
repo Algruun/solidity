@@ -35,7 +35,7 @@
 #include <libsolidity/interface/StandardCompiler.h>
 #include <libsolidity/interface/SourceReferenceFormatter.h>
 #include <libsolidity/interface/GasEstimator.h>
-#include <libsolidity/interface/MultiBackendAssemblyStack.h>
+#include <libsolidity/interface/AssemblyStack.h>
 #include <libsolidity/formal/Why3Translator.h>
 #include <libsolidity/inlineasm/AsmStack.h>
 
@@ -718,9 +718,9 @@ bool CommandLineInterface::processInput()
 	{
 		// switch to assembly mode
 		m_onlyAssemble = true;
-		using Input = MultiBackendAssemblyStack::Input;
-		using Machine = MultiBackendAssemblyStack::Machine;
-		Input input = m_args.count(g_argJulia) ? Input::JULIA : Input::Assembly;
+		using Input = AssemblyStack::Language;
+		using Machine = AssemblyStack::Machine;
+		Input inputLanguage = m_args.count(g_argJulia) ? Input::JULIA : Input::Assembly;
 		Machine targetMachine = Machine::EVM;
 		if (m_args.count(g_argMachine))
 		{
@@ -737,7 +737,7 @@ bool CommandLineInterface::processInput()
 				return false;
 			}
 		}
-		return assemble(input, targetMachine);
+		return assemble(inputLanguage, targetMachine);
 	}
 	if (m_args.count(g_argLink))
 	{
@@ -1024,16 +1024,16 @@ void CommandLineInterface::writeLinkedFiles()
 }
 
 bool CommandLineInterface::assemble(
-	MultiBackendAssemblyStack::Input _input,
-	MultiBackendAssemblyStack::Machine _targetMachine
+	AssemblyStack::Language _language,
+	AssemblyStack::Machine _targetMachine
 )
 {
 	bool successful = true;
 	map<string, shared_ptr<Scanner>> scanners;
-	map<string, MultiBackendAssemblyStack> assemblyStacks;
+	map<string, AssemblyStack> assemblyStacks;
 	for (auto const& src: m_sourceCodes)
 	{
-		auto& stack = assemblyStacks[src.first] = MultiBackendAssemblyStack(_input, _targetMachine);
+		auto& stack = assemblyStacks[src.first] = AssemblyStack(_language);
 		try
 		{
 			if (!stack.parseAndAnalyze(src.first, src.second))
@@ -1070,8 +1070,8 @@ bool CommandLineInterface::assemble(
 	for (auto const& src: m_sourceCodes)
 	{
 		cout << endl << "======= " << src.first << " =======" << endl;
-		MultiBackendAssemblyStack& stack = assemblyStacks[src.first];
-		cout << stack.assemble().toHex() << endl;
+		AssemblyStack& stack = assemblyStacks[src.first];
+		cout << stack.assemble(_targetMachine).toHex() << endl;
 		cout << stack.print() << endl;
 	}
 

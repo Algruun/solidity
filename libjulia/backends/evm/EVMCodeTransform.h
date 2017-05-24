@@ -105,7 +105,6 @@ private:
 	/// Assigns the label's id to a value taken from eth::Assembly if it has not yet been set.
 	void assignLabelIdIfUnset(solidity::assembly::Scope::Label& _label);
 
-
 	solidity::ErrorList& m_errors;
 	julia::AbstractAssembly& m_assembly;
 	solidity::assembly::AsmAnalysisInfo& m_info;
