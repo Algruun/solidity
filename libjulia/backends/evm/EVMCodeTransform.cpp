@@ -130,15 +130,19 @@ void CodeTransform::operator()(Block const& _block)
 
 void CodeTransform::operator()(VariableDeclaration const& _varDecl)
 {
+	int expectedItems = _varDecl.variables.size();
 	int height = m_assembly.stackHeight();
 	boost::apply_visitor(*this, *_varDecl.value);
-	expectDeposit(1, height);
-	auto& var = boost::get<Scope::Variable>(m_scope.identifiers.at(_varDecl.variable.name));
-	var.stackHeight = height;
-	var.active = true;
+	expectDeposit(expectedItems, height);
+	for (auto const& variable: _varDecl.variables)
+	{
+		auto& var = boost::get<Scope::Variable>(m_scope.identifiers.at(variable.name));
+		var.stackHeight = height++;
+		var.active = true;
+	}
 }
 
-void CodeTransform::operator()(FunctionalAssignment const& _assignment)
+void CodeTransform::operator()(Assignment const& _assignment)
 {
 	int height = m_assembly.stackHeight();
 	boost::apply_visitor(*this, *_assignment.value);
@@ -148,7 +152,7 @@ void CodeTransform::operator()(FunctionalAssignment const& _assignment)
 	checkStackHeight(&_assignment);
 }
 
-void CodeTransform::operator()(Assignment const& _assignment)
+void CodeTransform::operator()(StackAssignment const& _assignment)
 {
 	m_assembly.setSourceLocation(_assignment.location);
 	generateAssignment(_assignment.variableName, _assignment.location);

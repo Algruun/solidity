@@ -37,11 +37,11 @@ struct Literal;
 struct Block;
 struct Label;
 struct FunctionalInstruction;
-struct FunctionalAssignment;
+struct Assignment;
 struct VariableDeclaration;
 struct Instruction;
 struct Identifier;
-struct Assignment;
+struct StackAssignment;
 struct FunctionDefinition;
 struct FunctionCall;
 
@@ -84,8 +84,8 @@ public:
 	void operator()(solidity::assembly::FunctionalInstruction const& _instr);
 	void operator()(solidity::assembly::FunctionCall const&);
 	void operator()(solidity::assembly::Label const& _label);
+	void operator()(solidity::assembly::StackAssignment const& _assignment);
 	void operator()(solidity::assembly::Assignment const& _assignment);
-	void operator()(solidity::assembly::FunctionalAssignment const& _assignment);
 	void operator()(solidity::assembly::VariableDeclaration const& _varDecl);
 	void operator()(solidity::assembly::Block const& _block);
 	void operator()(solidity::assembly::FunctionDefinition const&);
