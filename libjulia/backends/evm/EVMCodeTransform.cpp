@@ -41,15 +41,20 @@ CodeTransform::CodeTransform(
 ):
 	m_errors(_errors),
 	m_assembly(_assembly),
+	m_block(_block),
 	m_info(_analysisInfo),
 	m_scope(*_analysisInfo.scopes.at(&_block)),
 	m_identifierAccess(_identifierAccess),
 	m_initialStackHeight(_initialStackHeight)
 {
-	int blockStartStackHeight = m_assembly.stackHeight();
-	std::for_each(_block.statements.begin(), _block.statements.end(), boost::apply_visitor(*this));
+}
 
-	m_assembly.setSourceLocation(_block.location);
+void CodeTransform::run()
+{
+	int blockStartStackHeight = m_assembly.stackHeight();
+	std::for_each(m_block.statements.begin(), m_block.statements.end(), boost::apply_visitor(*this));
+
+	m_assembly.setSourceLocation(m_block.location);
 
 	// pop variables
 	for (auto const& identifier: m_scope.identifiers)
@@ -63,6 +68,11 @@ CodeTransform::CodeTransform(
 void CodeTransform::operator()(const FunctionDefinition&)
 {
 	solAssert(false, "Function definition not removed during desugaring phase.");
+}
+
+void CodeTransform::recurse(Block const& _block)
+{
+	CodeTransform(m_errors, m_assembly, _block, m_info, m_identifierAccess, m_initialStackHeight);
 }
 
 void CodeTransform::generateAssignment(Identifier const& _variableName, SourceLocation const& _location)
@@ -124,7 +134,7 @@ void CodeTransform::assignLabelIdIfUnset(Scope::Label& _label)
 
 void CodeTransform::operator()(Block const& _block)
 {
-	CodeTransform(m_errors, m_assembly, _block, m_info, m_identifierAccess, m_initialStackHeight);
+	recurse(_block);
 	checkStackHeight(&_block);
 }
 
@@ -245,4 +255,45 @@ void CodeTransform::operator()(assembly::Instruction const& _instruction)
 	m_assembly.setSourceLocation(_instruction.location);
 	m_assembly.appendInstruction(_instruction.instruction);
 	checkStackHeight(&_instruction);
+}
+
+
+void EVM15CodeTransform::recurse(Block const& _block)
+{
+	EVM15CodeTransform(m_errors, m_evmAssembly, _block, m_info, m_identifierAccess, m_initialStackHeight);
+}
+
+void EVM15CodeTransform::operator()(assembly::Instruction const& _instruction)
+{
+	solAssert(_instruction.instruction != solidity::Instruction::JUMP, "Bare JUMP instruction used for EVM1.5");
+	solAssert(_instruction.instruction != solidity::Instruction::JUMPI, "Bare JUMPI instruction used for EVM1.5");
+	CodeTransform::operator ()(_instruction);
+}
+
+void EVM15CodeTransform::operator()(FunctionalInstruction const& _instruction)
+{
+	m_assembly.setSourceLocation(_instruction.location);
+	if (_instruction.instruction.instruction == solidity::Instruction::JUMP)
+	{
+		AbstractAssembly::LabelID label = AbstractAssembly::LabelID(-1);
+		if (!m_scope.lookup(boost::get<assembly::Identifier>(_instruction.arguments.at(0)).name, Scope::NonconstVisitor(
+			[=](Scope::Variable&) { solAssert(false, "Expected label"); },
+			[&](Scope::Label& _label)
+			{
+				assignLabelIdIfUnset(_label);
+				label = *_label.id;
+			},
+			[=](Scope::Function&) { solAssert(false, "Expected label"); }
+		)))
+		{
+			solAssert(false, "Identifier not found.");
+		}
+		m_evmAssembly.appendJumpTo(label);
+	}
+	else if (_instruction.instruction.instruction == solidity::Instruction::JUMPI)
+	{
+		solAssert(false, "Not yet implemented.");
+	}
+	else
+		CodeTransform::operator ()(_instruction);
 }

@@ -18,7 +18,7 @@
  * Common code generator for translating Julia / inline assembly to EVM and EVM1.5.
  */
 
-#include <libjulia/backends/evm/AbstractAssembly.h>
+#include <libjulia/backends/evm/EVMAssembly.h>
 
 #include <libsolidity/interface/Exceptions.h>
 
@@ -50,6 +50,7 @@ struct AsmAnalysisInfo;
 }
 namespace julia
 {
+class EVMAssembly;
 
 class CodeTransform: public boost::static_visitor<>
 {
@@ -67,7 +68,9 @@ public:
 	{
 	}
 
-private:
+	void run();
+
+protected:
 	CodeTransform(
 		solidity::ErrorList& _errors,
 		julia::AbstractAssembly& _assembly,
@@ -78,19 +81,21 @@ private:
 	);
 
 public:
-	void operator()(solidity::assembly::Instruction const& _instruction);
-	void operator()(solidity::assembly::Literal const& _literal);
-	void operator()(solidity::assembly::Identifier const& _identifier);
-	void operator()(solidity::assembly::FunctionalInstruction const& _instr);
-	void operator()(solidity::assembly::FunctionCall const&);
-	void operator()(solidity::assembly::Label const& _label);
-	void operator()(solidity::assembly::StackAssignment const& _assignment);
-	void operator()(solidity::assembly::Assignment const& _assignment);
-	void operator()(solidity::assembly::VariableDeclaration const& _varDecl);
-	void operator()(solidity::assembly::Block const& _block);
-	void operator()(solidity::assembly::FunctionDefinition const&);
+	virtual void operator()(solidity::assembly::Instruction const& _instruction);
+	virtual void operator()(solidity::assembly::Literal const& _literal);
+	virtual void operator()(solidity::assembly::Identifier const& _identifier);
+	virtual void operator()(solidity::assembly::FunctionalInstruction const& _instr);
+	virtual void operator()(solidity::assembly::FunctionCall const&);
+	virtual void operator()(solidity::assembly::Label const& _label);
+	virtual void operator()(solidity::assembly::StackAssignment const& _assignment);
+	virtual void operator()(solidity::assembly::Assignment const& _assignment);
+	virtual void operator()(solidity::assembly::VariableDeclaration const& _varDecl);
+	virtual void operator()(solidity::assembly::Block const& _block);
+	virtual void operator()(solidity::assembly::FunctionDefinition const&);
 
-private:
+protected:
+	virtual void recurse(solidity::assembly::Block const& _block);
+
 	void generateAssignment(solidity::assembly::Identifier const& _variableName, SourceLocation const& _location);
 
 	/// Determines the stack height difference to the given variables. Automatically generates
@@ -107,10 +112,45 @@ private:
 
 	solidity::ErrorList& m_errors;
 	julia::AbstractAssembly& m_assembly;
+	solidity::assembly::Block const& m_block;
 	solidity::assembly::AsmAnalysisInfo& m_info;
 	solidity::assembly::Scope& m_scope;
 	ExternalIdentifierAccess m_identifierAccess;
 	int const m_initialStackHeight;
+};
+
+class EVM15CodeTransform: public CodeTransform
+{
+public:
+	EVM15CodeTransform(
+		solidity::ErrorList& _errors,
+		julia::EVMAssembly& _assembly,
+		solidity::assembly::Block const& _block,
+		solidity::assembly::AsmAnalysisInfo& _analysisInfo,
+		ExternalIdentifierAccess const& _identifierAccess = ExternalIdentifierAccess()
+	): EVM15CodeTransform(_errors, _assembly, _block, _analysisInfo, _identifierAccess, _assembly.stackHeight())
+	{ }
+
+private:
+	EVM15CodeTransform(
+		solidity::ErrorList& _errors,
+		julia::EVMAssembly& _assembly,
+		solidity::assembly::Block const& _block,
+		solidity::assembly::AsmAnalysisInfo& _analysisInfo,
+		ExternalIdentifierAccess const& _identifierAccess,
+		int _initialStackHeight
+	):
+		CodeTransform(_errors, _assembly, _block, _analysisInfo, _identifierAccess, _initialStackHeight),
+		m_evmAssembly(_assembly)
+	{ }
+
+protected:
+	virtual void recurse(solidity::assembly::Block const& _block) override;
+
+	virtual void operator()(solidity::assembly::Instruction const& _instruction) override;
+	virtual void operator()(solidity::assembly::FunctionalInstruction const& _instruction) override;
+
+	EVMAssembly& m_evmAssembly;
 };
 
 }
