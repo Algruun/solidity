@@ -1029,7 +1029,6 @@ bool CommandLineInterface::assemble(
 )
 {
 	bool successful = true;
-	map<string, shared_ptr<Scanner>> scanners;
 	map<string, AssemblyStack> assemblyStacks;
 	for (auto const& src: m_sourceCodes)
 	{
@@ -1069,7 +1068,11 @@ bool CommandLineInterface::assemble(
 
 	for (auto const& src: m_sourceCodes)
 	{
-		cout << endl << "======= " << src.first << " =======" << endl;
+		string machine =
+			_targetMachine == AssemblyStack::Machine::EVM ? "EVM" :
+			_targetMachine == AssemblyStack::Machine::EVM15 ? "EVM 1.5" :
+			"eWasm";
+		cout << endl << "======= " << src.first << " (" << machine << ") =======" << endl;
 		AssemblyStack& stack = assemblyStacks[src.first];
 		cout << stack.assemble(_targetMachine).toHex() << endl;
 		cout << stack.print() << endl;
