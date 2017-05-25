@@ -53,7 +53,7 @@ bool InlineAssemblyStack::parse(
 
 	*m_parserResult = std::move(*result);
 	AsmAnalysisInfo analysisInfo;
-	return (AsmAnalyzer(analysisInfo, m_errors, _resolver)).analyze(*m_parserResult);
+	return (AsmAnalyzer(analysisInfo, m_errors, false, _resolver)).analyze(*m_parserResult);
 }
 
 string InlineAssemblyStack::toString()

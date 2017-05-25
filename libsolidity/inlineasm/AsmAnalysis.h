@@ -63,8 +63,9 @@ public:
 	explicit AsmAnalyzer(
 		AsmAnalysisInfo& _analysisInfo,
 		ErrorList& _errors,
+		bool _julia = false,
 		ExternalIdentifierAccess::Resolver const& _resolver = ExternalIdentifierAccess::Resolver()
-	): m_resolver(_resolver), m_info(_analysisInfo), m_errors(_errors) {}
+	): m_resolver(_resolver), m_info(_analysisInfo), m_errors(_errors) m_julia(_julia) {}
 
 	bool analyze(assembly::Block const& _block);
 
@@ -97,6 +98,7 @@ private:
 	Scope* m_currentScope = nullptr;
 	AsmAnalysisInfo& m_info;
 	ErrorList& m_errors;
+	bool m_julia = false;
 };
 
 }
